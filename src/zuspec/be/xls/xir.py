@@ -570,12 +570,18 @@ class Builder:
         return self.node("after_all", TOKEN_T, toks)
 
     def receive(self, tok: Node, channel: ChannelInterface,
-                predicate: Optional[Node] = None) -> Node:
+                predicate: Optional[Node] = None, blocking: bool = True) -> Node:
+        """A blocking receive is (token, data); a non-blocking one is
+        (token, data, valid), data 0 when no value was waiting."""
         attrs: Dict[str, Any] = {}
         if predicate is not None:
             attrs["predicate"] = predicate
+        if not blocking:
+            attrs["blocking"] = False
         attrs["channel"] = channel.name
-        return self.node("receive", TupleType((TOKEN_T, channel.type)), [tok], **attrs)
+        t = TupleType((TOKEN_T, channel.type)) if blocking else \
+            TupleType((TOKEN_T, channel.type, BitsType(1)))
+        return self.node("receive", t, [tok], **attrs)
 
     def send(self, tok: Node, data: Node, channel: ChannelInterface,
              predicate: Optional[Node] = None) -> Node:

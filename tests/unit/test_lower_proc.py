@@ -169,3 +169,22 @@ def test_every_state_node_has_an_absolute_source_position():
     assert nodes[("state_read", "sum")] == [(0, 3, 2)]
     assert nodes[("next_value", "sum")] == [(0, 8, 2)]      # the update on line 9
     assert nodes[("next_value", "idle")] == [(0, 4, 2)]     # unchanged: its declaration
+
+
+def test_try_get_is_a_non_blocking_receive_that_keeps_the_value():
+    # v = in.try_get(x): receive(blocking=false) -> (token, data, valid), and
+    # x = valid ? data : x (GAP-3: DSLX's recv_non_blocking with a default).
+    from zuspec.be.xls import xir
+    try_get = ir.ExprAwait(value=ir.ExprCall(
+        func=ir.ExprAttribute(value=fld(0), attr="try_get"), args=[l("x")]))
+    comp = component("poll", [in_port("a", u(8)), out_port("o", u(8))], [
+        decl("x", u(8), c(7, u(8))),
+        forever(
+            decl("v", u(1), None), assign(l("v"), try_get),
+            put(1, l("x")))])
+    pkg = roundtrip(lower_component(comp))
+    (recv,) = [n for n in pkg.proc("poll").nodes if n.op == "receive"]
+    assert recv.attrs.get("blocking") is False
+    assert recv.type == xir.TupleType((xir.TOKEN_T, xir.BitsType(8), xir.BitsType(1)))
+    sels = [n for n in pkg.proc("poll").nodes if n.op == "sel"]
+    assert sels, "x keeps its value when nothing was waiting: a sel on valid"

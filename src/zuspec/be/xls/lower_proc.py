@@ -19,6 +19,9 @@ The input shape (P1)::
 
   - get: ``StmtAssign([x], ExprAwait(ExprCall(ExprAttribute(<port>, "get"), [])))``
   - put: ``StmtExpr(ExprAwait(ExprCall(ExprAttribute(<port>, "put"), [v])))``
+  - try_get (GAP-3): ``StmtAssign([v], ExprAwait(ExprCall(ExprAttribute(<port>,
+    "try_get"), [x])))`` -- a non-blocking receive; ``v`` is its valid bit and
+    ``x`` keeps its value when nothing was waiting.
 
   Each op takes the path predicate (P7) and the effect token, threaded in
   program order (P8, D-6).
@@ -98,6 +101,19 @@ class ProcLowerer(BodyLowerer):
 
     def await_assign(self, tgt: ir.Expr, e: ir.ExprAwait, s: ir.Stmt) -> None:
         ch, method, call = self._port_call(e, s)
+        if method == "try_get" and ch.direction == "receive" and len(call.args) == 1:
+            # recv_non_blocking: x = valid ? data : x
+            x = call.args[0]
+            recv = self.b.receive(self._tok(), ch, predicate=self.pred(), blocking=False)
+            self.flow.tok = self.b.tuple_index(recv, 0)
+            data = self.b.tuple_index(recv, 1)
+            valid = self.b.tuple_index(recv, 2)
+            et = from_ir(self._elem_type(ch))
+            old, ot = self.expr(x)
+            old = self.coerce(old, ot, et, x, f"the value try_get on {ch.name} keeps")
+            self.assign(x, self.b.sel(valid, [old, data]), et, x)
+            self.assign(tgt, valid, from_ir(ir.DataTypeInt(bits=1, signed=False)), tgt)
+            return
         if method != "get" or ch.direction != "receive" or call.args:
             raise self.error(f"expected `x = await {ch.name}.get()` on an input port", s)
         recv = self.b.receive(self._tok(), ch, predicate=self.pred())
