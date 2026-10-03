@@ -1,0 +1,11 @@
+package acc
+
+file_number 0 "acc.x"
+
+top fn __acc__f(a: bits[8] id=1, b: bits[8][4] id=2, i: bits[2] id=3) -> bits[8] {
+  array_index.4: bits[8] = array_index(b, indices=[i], id=4, pos=[(0,12,42)])
+  literal.6: bits[1] = literal(value=1, id=6, pos=[(0,12,54)])
+  add.5: bits[8] = add(a, array_index.4, id=5, pos=[(0,12,37)])
+  shrl.7: bits[8] = shrl(a, literal.6, id=7, pos=[(0,12,49)])
+  ret add.8: bits[8] = add(add.5, shrl.7, id=8, pos=[(0,12,37)])
+}

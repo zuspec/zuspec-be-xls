@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zuspec-be-xls"
+dynamic = ["version"]
+description = "Zuspec back end that emits XLS IR"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Matthew Ballance", email = "matt.ballance@gmail.com"}
+]
+requires-python = ">=3.10"
+dependencies = [
+    "zuspec-ir-core",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+]
+
+[project.entry-points."dv_flow.mgr"]
+zuspec-be-xls = "zuspec.be.xls.dfm.__ext__"
+
+[tool.setuptools.package-data]
+"zuspec.be.xls.dfm" = ["flow.dv"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+markers = [
+    "xls: needs an XLS binary (opt_main); skipped when none is found",
+    "xls_codegen: needs opt_main and codegen_main; skipped when either is missing",
+]

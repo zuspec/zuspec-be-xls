@@ -1,0 +1,15 @@
+package p2
+
+file_number 0 "p2.x"
+
+top fn __p2__g(a: bits[8] id=1, b: bits[8] id=2) -> (bits[8], bits[8], bits[16], bits[4], bits[1]) {
+  literal.3: bits[2] = literal(value=2, id=3, pos=[(0,25,54)])
+  literal.5: bits[1] = literal(value=1, id=5, pos=[(0,25,62)])
+  sign_ext.7: bits[8] = sign_ext(b, new_bit_count=8, id=7)
+  shrl.4: bits[8] = shrl(a, literal.3, id=4, pos=[(0,25,49)])
+  shra.6: bits[8] = shra(b, literal.5, id=6, pos=[(0,25,57)])
+  concat.8: bits[16] = concat(a, sign_ext.7, id=8, pos=[(0,25,65)])
+  bit_slice.9: bits[4] = bit_slice(a, start=2, width=4, id=9, pos=[(0,25,82)])
+  and_reduce.10: bits[1] = and_reduce(a, id=10, pos=[(0,25,99)])
+  ret tuple.11: (bits[8], bits[8], bits[16], bits[4], bits[1]) = tuple(shrl.4, shra.6, concat.8, bit_slice.9, and_reduce.10, id=11, pos=[(0,25,48)])
+}

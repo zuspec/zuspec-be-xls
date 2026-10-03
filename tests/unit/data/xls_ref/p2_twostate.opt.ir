@@ -1,0 +1,31 @@
+package p2
+
+file_number 0 "p2.x"
+file_number 1 "<Generated non-synthesizable function for __p2__twostate_0_next>"
+
+top proc __p2__twostate_0_next<_in_ch: (bits[8], bits[4]) in, _out_ch: bits[8] out>(__state_0: bits[8] pos=[(0,6,8)], __state_1: bits[8][4] pos=[(0,6,8)], __state_0_non_synth: bits[8] pos=[(0,6,8)], __state_1_non_synth: bits[8][4] pos=[(0,6,8)], init={1, [0, 0, 0, 0], 1, [0, 0, 0, 0]}, non_synth={__state_0_non_synth, __state_1_non_synth}) {
+  chan_interface _in_ch(direction=receive, kind=streaming, strictness=proven_mutually_exclusive, flow_control=ready_valid, flop_kind=none)
+  chan_interface _out_ch(direction=send, kind=streaming, strictness=proven_mutually_exclusive, flow_control=ready_valid, flop_kind=none)
+  after_all.7: token = after_all(id=7)
+  receive.46: (token, (bits[8], bits[4])) = receive(after_all.7, channel=_in_ch, id=46)
+  x: (bits[8], bits[4]) = tuple_index(receive.46, index=1, id=11, pos=[(0,8,18)])
+  __state_0: bits[8] = state_read(state_element=__state_0, id=57, pos=[(0,6,8)])
+  literal.24: bits[8] = literal(value=1, id=24, pos=[(0,12,13)])
+  __state_1: bits[8][4] = state_read(state_element=__state_1, id=59, pos=[(0,6,8)])
+  x_a__1: bits[8] = tuple_index(x, index=0, id=21, pos=[(0,10,37)])
+  x_b: bits[4] = tuple_index(x, index=1, id=20, pos=[(0,10,32)])
+  literal.91: bits[8] = literal(value=255, id=91, pos=[(0,9,23), (1,0,0)])
+  tok: token = tuple_index(receive.46, index=0, id=48)
+  add.25: bits[8] = add(__state_0, literal.24, id=25, pos=[(0,12,9)])
+  arr2: bits[8][4] = array_update(__state_1, x_a__1, indices=[x_b], id=22, pos=[(0,10,25)])
+  __token: token = literal(value=token, id=92, pos=[(1,0,0)])
+  ne.93: bits[1] = ne(x_a__1, literal.91, id=93, pos=[(0,9,17), (1,0,0)])
+  tok__1: token = send(tok, __state_0, channel=_out_ch, id=47)
+  next_value.58: () = next_value(state_element=__state_0, value=add.25, id=58)
+  next_value.60: () = next_value(state_element=__state_1, value=arr2, id=60)
+  __state_0_non_synth_read: bits[8] = state_read(state_element=__state_0_non_synth, id=72, pos=[(0,6,8)])
+  __state_1_non_synth_read: bits[8][4] = state_read(state_element=__state_1_non_synth, id=75, pos=[(0,6,8)])
+  next_value.83: () = next_value(state_element=__state_0_non_synth, value=add.25, id=83)
+  next_value.84: () = next_value(state_element=__state_1_non_synth, value=arr2, id=84)
+  assert_94: token = assert(__token, ne.93, message="Assertion failure via assert! @ p2.x:10:16-10:43", label="__p2__twostate_0_next_0_non_synth___p2__twostate_0_next_never_ff", id=96, pos=[(1,0,0)])
+}

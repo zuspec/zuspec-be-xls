@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://dv-flow.github.io/flow.dv.schema.json
+package:
+  name: zuspec.xls
+  desc: zuspec IR <-> XLS -- the zuspec side of an XLS block (signatures)
+  doc: |
+    Tasks that connect zuspec's view of a block to XLS's. The XLS tools
+    themselves run in `synth.xls` (dv-flow-libsynth), which knows nothing
+    about zuspec.
+
+    **File types**
+
+    * `blockSignaturePrediction` -- a `BlockSignature` (JSON) predicted from
+      zuspec IR before XLS runs: the ports XLS codegen will produce, with
+      the source-level payload type names.
+    * `blockSignature` -- the signature a block is integrated by (JSON, format
+      `zuspec.block-signature`). Every block reaches integration as one of
+      these, whether XLS, another engine or a hand-written module produced it.
+
+  tasks:
+  - name: Signature
+    desc: Check XLS's module signatures against the predictions and write blockSignature files
+    doc: |
+      Pairs each `xlsModuleSignature` (from `synth.xls.Codegen`) with the
+      `blockSignaturePrediction` of the same module name, and fails if they
+      differ in any port name, direction, width, clock or reset. The output
+      `blockSignature` is XLS's own signature, plus what XLS does not know:
+      the payload type names from the prediction, and the module's source
+      file (`<module>.sv` beside the signature).
+    consumes:
+    - filetype: xlsModuleSignature
+    - filetype: blockSignaturePrediction
+    shell: pytask
+    run: zuspec.be.xls.dfm.tasks.Signature

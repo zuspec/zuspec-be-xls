@@ -1,0 +1,35 @@
+package p2
+
+file_number 0 "p2.x"
+
+top proc __p2__twostate_0_next<_in_ch: (bits[8], bits[4]) in, _out_ch: bits[8] out>(__state: (bits[8], bits[8][4]) pos=[(0,6,8)], init={(1, [0, 0, 0, 0])}) {
+  chan_interface _in_ch(direction=receive, kind=streaming, strictness=proven_mutually_exclusive, flow_control=ready_valid, flop_kind=none)
+  chan_interface _out_ch(direction=send, kind=streaming, strictness=proven_mutually_exclusive, flow_control=ready_valid, flop_kind=none)
+  after_all.7: token = after_all(id=7)
+  literal.3: bits[1] = literal(value=1, id=3)
+  receive.8: (token, (bits[8], bits[4])) = receive(after_all.7, predicate=literal.3, channel=_in_ch, id=8)
+  x: (bits[8], bits[4]) = tuple_index(receive.8, index=1, id=11, pos=[(0,8,18)])
+  __state: (bits[8], bits[8][4]) = state_read(state_element=__state, id=2, pos=[(0,6,8)])
+  x_a: bits[8] = tuple_index(x, index=0, id=12, pos=[(0,9,17)])
+  literal.13: bits[8] = literal(value=255, id=13, pos=[(0,9,23)])
+  c: bits[8] = tuple_index(__state, index=0, id=5, pos=[(0,7,13)])
+  literal.24: bits[8] = literal(value=1, id=24, pos=[(0,12,13)])
+  arr: bits[8][4] = tuple_index(__state, index=1, id=6, pos=[(0,7,16)])
+  x_a__1: bits[8] = tuple_index(x, index=0, id=21, pos=[(0,10,37)])
+  x_b: bits[4] = tuple_index(x, index=1, id=20, pos=[(0,10,32)])
+  not.16: bits[1] = not(literal.3, id=16)
+  ne.14: bits[1] = ne(x_a, literal.13, id=14, pos=[(0,9,17)])
+  add.25: bits[8] = add(c, literal.24, id=25, pos=[(0,12,9)])
+  arr2: bits[8][4] = array_update(arr, x_a__1, indices=[x_b], id=22, pos=[(0,10,25)])
+  __token: token = literal(value=token, id=1)
+  or.17: bits[1] = or(not.16, ne.14, id=17)
+  tok: token = tuple_index(receive.8, index=0, id=10, pos=[(0,8,13)])
+  tuple.26: (bits[8], bits[8][4]) = tuple(add.25, arr2, id=26, pos=[(0,12,8)])
+  tuple.4: () = tuple(id=4, pos=[(0,4,57)])
+  tuple_index.9: token = tuple_index(receive.8, index=0, id=9)
+  literal.15: bits[8][8] = literal(value=[110, 101, 118, 101, 114, 95, 102, 102], id=15, pos=[(0,9,31)])
+  assert.18: token = assert(__token, or.17, message="Assertion failure via assert! @ p2.x:10:16-10:43", label="never_ff", id=18)
+  tuple.19: () = tuple(id=19)
+  tok__1: token = send(tok, c, predicate=literal.3, channel=_out_ch, id=23)
+  next_value.27: () = next_value(state_element=__state, value=tuple.26, id=27)
+}

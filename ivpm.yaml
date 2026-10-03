@@ -1,0 +1,16 @@
+package:
+    name: zuspec-be-xls
+    version: 0.1.0
+    default-dep-set: default-dev
+
+    dep-sets:
+    - name: default
+      deps:
+      - name: zuspec-ir-core
+        url: https://github.com/zuspec/zuspec-ir-core.git
+
+    - name: default-dev
+      uses: default
+      deps:
+      - name: pytest
+        src: pypi

@@ -1,0 +1,22 @@
+# CI for zuspec/zuspec-be-xls, through the estate's shared reusable workflow
+# (as zuspec-ir-core, zuspec-be-sv and zuspec-be-sw do). Pure Python: one
+# universal wheel. Tests that need an XLS binary are marked `xls` and skip
+# when opt_main is not on PATH.
+
+name: CI
+on:
+  - push
+  - pull_request
+  - workflow_dispatch
+jobs:
+  ci-linux:
+    uses: zuspec/zuspec-release/.github/workflows/zuspec-pybuild.yml@main
+    with:
+      version_dir: 'src/zuspec/be/xls'
+      build_universal: true
+      build_linux: false
+      build_docs: false
+      build_llms_txt: false
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+      LLMS_PAT: ${{ secrets.LLMS_PAT }}
