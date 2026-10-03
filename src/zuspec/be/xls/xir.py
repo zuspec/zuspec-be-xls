@@ -36,6 +36,20 @@ class Type:
         raise NotImplementedError
 
 
+
+#: Words XLS IR's parser takes as keywords (pinned release), so they cannot
+#: name a node, parameter, state element or channel. Found by trying each as a
+#: parameter name with opt_main.
+IR_KEYWORDS = frozenset({
+    "bits", "block", "chan", "clock", "file_number", "fn", "instantiation", "next",
+    "package", "proc", "reg", "ret", "stage", "token", "top"})
+
+
+def ir_ident(name: str) -> str:
+    """*name* as an XLS IR identifier: a keyword gets a trailing `_`
+    (an SV argument named `block` is the IR parameter `block_`)."""
+    return name + "_" if name in IR_KEYWORDS else name
+
 @dc.dataclass(frozen=True)
 class BitsType(Type):
     width: int
@@ -210,7 +224,7 @@ class Node:
     @property
     def ref(self) -> str:
         """The name other nodes use to refer to this one."""
-        return self.name if self.name is not None else f"{self.op}.{self.id}"
+        return ir_ident(self.name) if self.name is not None else f"{self.op}.{self.id}"
 
     def all_operands(self) -> Iterator["Node"]:
         """Positional operands, then node-valued attrs, in print order."""

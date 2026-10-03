@@ -239,3 +239,12 @@ def test_s7_assert_fires_in_xls_too():
         xls_eval_fn(pkg, "af", [9])
     with pytest.raises(XlsAssertionError):
         Interpreter(roundtrip(pkg)).call("af", [9])
+
+
+def test_arguments_named_like_xls_ir_keywords():
+    # An SV argument may be called `block` (AES's is); XLS IR reserves it, so
+    # it prints as `block_`, and XLS parses the package (run_fn runs opt_main).
+    f = fn("kw", [("block", u(8)), ("fn", u(8)), ("next", u(8))], u(8), [
+        ret(bop(bop(p("block"), "BitXor", p("fn")), "BitXor", p("next")))])
+    vecs = [(1, 2, 4), (0xF0, 0x0F, 0xFF)]
+    assert run_fn([f], "kw", vecs) == [7, 0]

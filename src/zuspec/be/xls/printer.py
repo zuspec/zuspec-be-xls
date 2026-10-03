@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any, List, Union
 
-from .xir import (Function, Node, Package, Proc, format_value)
+from .xir import (Function, Node, Package, Proc, format_value, ir_ident)
 
 #: String attrs that print quoted. Every other string attr is a bare name
 #: (a channel, state element or function).
@@ -39,7 +39,7 @@ def _fmt_attr(node: Node, key: str, v: Any) -> str:
     if isinstance(v, int):
         return str(v)
     if isinstance(v, str):
-        return _fmt_str(v) if key in _QUOTED else v
+        return _fmt_str(v) if key in _QUOTED else ir_ident(v)
     raise TypeError(f"cannot print attr {key}={v!r} on {node.ref}")
 
 
@@ -57,7 +57,7 @@ def format_node(n: Node, is_ret: bool = False) -> str:
 def format_function(f: Function, top: bool = False) -> str:
     params = ", ".join(f"{p.ref}: {p.type} id={p.id}" for p in f.params)
     assert f.ret is not None, f"function {f.name} has no return value"
-    lines = [f"{'top ' if top else ''}fn {f.name}({params}) -> {f.ret.type} {{"]
+    lines = [f"{'top ' if top else ''}fn {ir_ident(f.name)}({params}) -> {f.ret.type} {{"]
     for n in f.nodes:
         lines.append("  " + format_node(n, is_ret=(n is f.ret)))
     lines.append("}")
@@ -66,11 +66,11 @@ def format_function(f: Function, top: bool = False) -> str:
 
 def format_proc(p: Proc, top: bool = False) -> str:
     chans = ", ".join(
-        f"{c.name}: {c.type} {'in' if c.direction == 'receive' else 'out'}"
+        f"{ir_ident(c.name)}: {c.type} {'in' if c.direction == 'receive' else 'out'}"
         for c in p.channels)
     state = []
     for s in p.state:
-        txt = f"{s.name}: {s.type}"
+        txt = f"{ir_ident(s.name)}: {s.type}"
         if s.pos:
             txt += f" pos={_fmt_pos(s.pos)}"
         state.append(txt)
@@ -79,10 +79,10 @@ def format_proc(p: Proc, top: bool = False) -> str:
         state.append(f"init={{{inits}}}")
     if p.non_synth:
         state.append(f"non_synth={{{', '.join(p.non_synth)}}}")
-    lines = [f"{'top ' if top else ''}proc {p.name}<{chans}>({', '.join(state)}) {{"]
+    lines = [f"{'top ' if top else ''}proc {ir_ident(p.name)}<{chans}>({', '.join(state)}) {{"]
     for c in p.channels:
         lines.append(
-            f"  chan_interface {c.name}(direction={c.direction}, kind={c.kind}, "
+            f"  chan_interface {ir_ident(c.name)}(direction={c.direction}, kind={c.kind}, "
             f"strictness={c.strictness}, flow_control={c.flow_control}, "
             f"flop_kind={c.flop_kind})")
     for n in p.nodes:
@@ -92,7 +92,7 @@ def format_proc(p: Proc, top: bool = False) -> str:
 
 
 def format_package(pkg: Package) -> str:
-    out = [f"package {pkg.name}", ""]
+    out = [f"package {ir_ident(pkg.name)}", ""]
     if pkg.files:
         for num in sorted(pkg.files):
             out.append(f"file_number {num} {_fmt_str(pkg.files[num])}")
