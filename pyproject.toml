@@ -24,6 +24,10 @@ dev = [
 [project.entry-points."dv_flow.mgr"]
 zuspec-be-xls = "zuspec.be.xls.dfm.__ext__"
 
+# XLS as a synthesis engine (zuspec.ir.core.engine).
+[project.entry-points."zuspec.engines"]
+xls = "zuspec.be.xls.engine:XlsEngine"
+
 [tool.setuptools.package-data]
 "zuspec.be.xls.dfm" = ["flow.dv"]
 

@@ -182,6 +182,19 @@ def test_d1_division_must_be_guarded():
     bad = fn("bad", [("n", u(8)), ("d", u(8))], u(8), [ret(bop(p("n"), "Div", p("d")))])
     with pytest.raises(StaticSubsetError, match="may be zero"):
         lower_fns([bad])
+    # The else branch of `if (d == 0)` is guarded too (canary gap 6, F3).
+    els = fn("de", [("n", u(8)), ("d", u(8))], u(8), [
+        decl("r", u(8), c(0, u(8))),
+        if_(cmp(p("d"), "Eq", c(0, u(8))), [assign(l("r"), c(0, u(8)))],
+            [assign(l("r"), bop(p("n"), "Mod", p("d")))]),
+        ret(l("r"))])
+    assert run_fn([els], "de", vecs) == [n % d if d else 0 for n, d in vecs]
+    # ... but not its then branch.
+    thn = fn("dt", [("n", u(8)), ("d", u(8))], u(8), [
+        if_(cmp(p("d"), "Eq", c(0, u(8))), [ret(bop(p("n"), "Div", p("d")))]),
+        ret(c(0, u(8)))])
+    with pytest.raises(StaticSubsetError, match="may be zero"):
+        lower_fns([thn])
     sdiv = fn("sd", [("n", s(8))], s(8), [ret(bop(p("n"), "Div", c(3, s(8))))])
     vals = list(range(256))
     assert run_fn([sdiv], "sd", [(n,) for n in vals]) == \

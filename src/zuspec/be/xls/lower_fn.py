@@ -407,15 +407,20 @@ class BodyLowerer:
             n = n.operands[0]
         return n
 
-    def _implies_nonzero(self, c: xir.Node, d: xir.Node) -> bool:
+    def _implies_nonzero(self, c: xir.Node, d: xir.Node, neg: bool = False) -> bool:
+        """Whether ``c`` (or ``!c`` when ``neg``) being true implies ``d != 0``.
+        The else branch of ``if (d == 0)`` carries ``not(eq(d, 0))``."""
         d = self._unextended(d)
-        if c.op == "ne":
+        if c.op == "not":
+            return self._implies_nonzero(c.operands[0], d, not neg)
+        if c.op == ("eq" if neg else "ne"):
             a, z = c.operands
             for x, y in ((a, z), (z, a)):
                 if self._unextended(x) is d and y.op == "literal" and y.attrs["value"] == 0:
                     return True
-        if c.op == "and":
-            return any(self._implies_nonzero(x, d) for x in c.operands)
+        # c && x implies each conjunct; !(c || x) implies each negated disjunct.
+        if c.op == ("or" if neg else "and"):
+            return any(self._implies_nonzero(x, d, neg) for x in c.operands)
         return False
 
     def _ifexp(self, e: ir.ExprIfExp) -> Tuple[xir.Node, T]:

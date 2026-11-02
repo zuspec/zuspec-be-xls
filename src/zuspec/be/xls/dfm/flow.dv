@@ -31,3 +31,23 @@ package:
     - filetype: blockSignaturePrediction
     shell: pytask
     run: zuspec.be.xls.dfm.tasks.Signature
+
+  - name: Overlay
+    desc: Record XLS's results as a Zuspec overlay on the source's anchors (an IR bundle per module)
+    doc: |
+      Pairs, by module name, each `zuspecAnchorTable` (written by the front end
+      with the XLS IR) with what `synth.xls.Codegen` wrote for that module:
+      `xlsScheduledIR` (or `xlsOptIR`), `xlsSchedule`, `xlsModuleSignature`
+      and, when present, `xlsBlockIR`. Writes `<module>.zir/` -- an IR bundle
+      (`manifest.json`, `anchors.json`, `overlays/xls-<id>.json`) -- so reports,
+      viewers and diffs read XLS's results in source terms without XLS's files
+      (zuspec-ir-core docs/results.md, zuspec-be-xls docs/overlay-xls.md).
+    consumes:
+    - filetype: zuspecAnchorTable
+    - filetype: xlsScheduledIR
+    - filetype: xlsOptIR
+    - filetype: xlsSchedule
+    - filetype: xlsModuleSignature
+    - filetype: xlsBlockIR
+    shell: pytask
+    run: zuspec.be.xls.dfm.tasks.Overlay

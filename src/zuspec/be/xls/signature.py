@@ -138,6 +138,11 @@ _FLOW = {"CHANNEL_FLOW_CONTROL_READY_VALID": "ready_valid",
          "CHANNEL_FLOW_CONTROL_VALID": "valid", "CHANNEL_FLOW_CONTROL_NONE": "none"}
 
 
+#: ``ChannelInterfaceProto.flop_kind`` -> ``ChannelSignature.flop_kind``.
+_FLOP = {"FLOP_KIND_NONE": "none", "FLOP_KIND_FLOP": "flop", "FLOP_KIND_SKID": "skid",
+         "FLOP_KIND_ZERO_LATENCY": "zero_latency"}
+
+
 def signature_from_codegen(text: str) -> ir.BlockSignature:
     """Read the ``ModuleSignatureProto`` text that ``codegen_main`` writes.
 
@@ -161,7 +166,9 @@ def signature_from_codegen(text: str) -> ir.BlockSignature:
             direction="in" if _one(ch, "direction") == "CHANNEL_DIRECTION_RECEIVE" else "out",
             payload=ir.DataTypeInt(bits=_type_bits(_one(ch, "type", {})), signed=False),
             flow_control=_FLOW.get(_one(stream, "flow_control"), "none"),
-            ports={k: v for k, v in ports.items() if v is not None}))
+            ports={k: v for k, v in ports.items() if v is not None},
+            stage=_one(ch, "stage"),
+            flop_kind=_FLOP.get(_one(ch, "flop_kind"))))
     return out
 
 
