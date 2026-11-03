@@ -266,11 +266,25 @@ class _Activation:
         self.state = state
         self.outputs = outputs
         self.next: Dict[str, Value] = {}
+        self.fired: set = set()
+
+    def _fire(self, ch) -> None:
+        """runtime_mutually_exclusive: XLS's RTL asserts that at most one op
+        on the channel fires per activation (RQ-F5); so does this."""
+        if ch.strictness == "runtime_mutually_exclusive":
+            if ch.name in self.fired:
+                raise XlsAssertionError(
+                    f"Proc {self.proc.name} has active operations on channel {ch.name} "
+                    f"in the same activation")
+            self.fired.add(ch.name)
 
     def effect(self, n: Node, ops: List[Value], env: Dict[int, Value]) -> Value:
         a = n.attrs
         pred = env[id(a["predicate"])] if "predicate" in a else 1
         if n.op == "state_read":
+            # Off, the value is unspecified; zero shows a lowering that uses it.
+            if not pred:
+                return zero_value(self.proc.state_element(a["state_element"]).type)
             return self.state[a["state_element"]]
         if n.op == "next_value":
             if pred:
@@ -284,6 +298,7 @@ class _Activation:
             # "receive": a false predicate yields zero-filled data
             if not pred:
                 return (TOKEN, zero_value(ch.type))
+            self._fire(ch)
             q = self.inputs.get(ch.name, [])
             i = self.cursor.get(ch.name, 0)
             if i >= len(q):
@@ -292,6 +307,7 @@ class _Activation:
             return (TOKEN, _norm(q[i], ch.type))
         if n.op == "send":
             if pred:
+                self._fire(ch)
                 self.outputs.setdefault(ch.name, []).append(ops[1])
             return TOKEN
         raise ValueError(f"op {n.op!r} is not supported by the interpreter")

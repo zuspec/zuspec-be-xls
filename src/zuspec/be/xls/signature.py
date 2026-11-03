@@ -52,13 +52,19 @@ def predict_signature(comp: ir.DataTypeComponent,
         if not isinstance(f.datatype, (ir.DataTypeGetIF, ir.DataTypePutIF)):
             continue
         direction = "in" if isinstance(f.datatype, ir.DataTypeGetIF) else "out"
+        flow = f.pragmas.get("fw_flow", "ready_valid")
+        if flow == "level":
+            # A single_value channel: a data pin only.
+            fc, ports = "none", {"data": f.name + opts.data_suffix}
+        else:
+            # "valid": XLS still has a ready pin (flow_control=none emits one,
+            # and there is no valid-only mode); integration ties it high.
+            fc = "valid" if flow == "valid" else "ready_valid"
+            ports = {"data": f.name + opts.data_suffix, "valid": f.name + opts.valid_suffix,
+                     "ready": f.name + opts.ready_suffix}
         sig.channels.append(ir.ChannelSignature(
             name=f.name, direction=direction, payload=f.datatype.element_type,
-            flow_control="ready_valid",
-            ports={"data": f.name + opts.data_suffix,
-                   "valid": f.name + opts.valid_suffix,
-                   "ready": f.name + opts.ready_suffix},
-            payload_sv_type=f.pragmas.get("sv_type")))
+            flow_control=fc, ports=ports, payload_sv_type=f.pragmas.get("sv_type")))
     return sig
 
 
@@ -158,14 +164,20 @@ def signature_from_codegen(text: str) -> ir.BlockSignature:
                             initiation_interval=_one(pipe, "initiation_interval")
                             if pipe else None, engine="xls")
     for ch in sig.get("channel_interfaces", []):
-        stream = _one(ch, "streaming", {})
-        ports = {role: _one(stream, f"{role}_port_name")
-                 for role in ("data", "valid", "ready")}
+        single = _one(ch, "single_value", None)
+        if single is not None:
+            ports = {"data": _one(single, "data_port_name")}
+            flow = "none"
+        else:
+            stream = _one(ch, "streaming", {})
+            ports = {role: _one(stream, f"{role}_port_name")
+                     for role in ("data", "valid", "ready")}
+            flow = _FLOW.get(_one(stream, "flow_control"), "none")
         out.channels.append(ir.ChannelSignature(
             name=_one(ch, "channel_name"),
             direction="in" if _one(ch, "direction") == "CHANNEL_DIRECTION_RECEIVE" else "out",
             payload=ir.DataTypeInt(bits=_type_bits(_one(ch, "type", {})), signed=False),
-            flow_control=_FLOW.get(_one(stream, "flow_control"), "none"),
+            flow_control=flow,
             ports={k: v for k, v in ports.items() if v is not None},
             stage=_one(ch, "stage"),
             flop_kind=_FLOP.get(_one(ch, "flop_kind"))))
@@ -197,6 +209,9 @@ def signature_mismatches(predicted: ir.BlockSignature,
     for name in sorted(pch.keys() & ach.keys()):
         p, a = pch[name], ach[name]
         for attr in ("direction", "flow_control", "ports"):
+            if attr == "flow_control" and (p.flow_control, a.flow_control) == \
+                    ("valid", "ready_valid"):
+                continue        # valid-only: XLS's ready pin is tied by integration
             if getattr(p, attr) != getattr(a, attr):
                 diffs.append(f"channel {name} {attr}: predicted {getattr(p, attr)!r}, "
                              f"codegen {getattr(a, attr)!r}")
@@ -224,5 +239,8 @@ def actual_signature(predicted: ir.BlockSignature, codegen: ir.BlockSignature,
     out = dc.replace(codegen, channels=[dc.replace(c) for c in codegen.channels],
                      sources=list(sources or []), engine="xls")
     for c in out.channels:
-        c.payload_sv_type = predicted.channel(c.name).payload_sv_type
+        pc = predicted.channel(c.name)
+        c.payload_sv_type = pc.payload_sv_type
+        if pc.flow_control == "valid":
+            c.flow_control = "valid"
     return out

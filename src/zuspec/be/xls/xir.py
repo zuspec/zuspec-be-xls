@@ -261,8 +261,9 @@ class ChannelInterface:
     name: str
     type: Type
     direction: str                       # "receive" | "send"
-    kind: str = "streaming"
-    strictness: str = "proven_mutually_exclusive"
+    kind: str = "streaming"              # "streaming" | "single_value"
+    #: None for a single_value channel (XLS rejects a strictness on one).
+    strictness: Optional[str] = "proven_mutually_exclusive"
     flow_control: str = "ready_valid"
     flop_kind: str = "none"
 

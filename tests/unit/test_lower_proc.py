@@ -96,7 +96,8 @@ def _reject(body, match, fields=None):
 
 def test_p10_rejections():
     loop_get = [forever(decl("x", u(8)), *for_("k", 2, [assign(l("x"), get(0))]))]
-    _reject(loop_get, "inside a loop")
+    # RQ-F5: a loop unrolls; unguarded, its iterations are two ops that both run
+    _reject(loop_get, "one of them is unguarded")
     twice = [forever(decl("x", u(8)), assign(l("x"), get(0)), assign(l("x"), get(0)))]
     _reject(twice, "second operation on channel 'i'")
     bare_get = [forever(ir.StmtExpr(expr=get(0)))]

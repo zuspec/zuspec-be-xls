@@ -356,7 +356,8 @@ class _Parser:
                 ifaces[name] = ChannelInterface(
                     name=name, type=t, direction=direction,
                     kind=kv.get("kind", "streaming"),
-                    strictness=kv.get("strictness", "proven_mutually_exclusive"),
+                    strictness=kv.get("strictness", None if kv.get("kind") == "single_value"
+                                      else "proven_mutually_exclusive"),
                     flow_control=kv.get("flow_control", "ready_valid"),
                     flop_kind=kv.get("flop_kind", "none"))
                 continue

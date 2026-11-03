@@ -81,10 +81,10 @@ def format_proc(p: Proc, top: bool = False) -> str:
         state.append(f"non_synth={{{', '.join(p.non_synth)}}}")
     lines = [f"{'top ' if top else ''}proc {ir_ident(p.name)}<{chans}>({', '.join(state)}) {{"]
     for c in p.channels:
+        strict = f"strictness={c.strictness}, " if c.strictness is not None else ""
         lines.append(
             f"  chan_interface {ir_ident(c.name)}(direction={c.direction}, kind={c.kind}, "
-            f"strictness={c.strictness}, flow_control={c.flow_control}, "
-            f"flop_kind={c.flop_kind})")
+            f"{strict}flow_control={c.flow_control}, flop_kind={c.flop_kind})")
     for n in p.nodes:
         lines.append("  " + format_node(n))
     lines.append("}")
