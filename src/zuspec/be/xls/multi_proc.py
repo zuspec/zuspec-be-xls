@@ -1,4 +1,4 @@
-"""Several components as one multi-proc XLS package (fw-hdl RQ-F7).
+"""Several components as one multi-proc XLS package (fw-hdl).
 
 Each member class is lowered to a proc of its own (one per class, shared by
 its instances); a top proc named after the group declares the channels

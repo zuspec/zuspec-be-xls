@@ -9,7 +9,7 @@ The input shape (P1)::
   declares (it outlives the prologue, so it persists). Each becomes a state
   element with one ``state_read`` at the top of the activation and **one
   ``next_value``** at the end, its value joined through ``sel`` (D-5). An
-  element read and written only under guards (RQ-F5) has its ``state_read``
+  element read and written only under guards has its ``state_read``
   predicated on the OR of those guards and its ``next_value`` on the OR of its writes'.
 * **The initial state** (P4) is the field's ``initial_value`` (or 0), then
   updated by the prologue. The prologue must fold to constants.
@@ -27,7 +27,7 @@ The input shape (P1)::
   Each op takes the path predicate (P7) and the effect token, threaded in
   program order (P8, D-6), except that effects on exclusive paths are not
   ordered against each other. Channel ops in a constant-bound loop unroll.
-* **Several ops on one channel** (RQ-F5) per activation: allowed when their
+* **Several ops on one channel** per activation: allowed when their
   guards are exclusive (``proven_mutually_exclusive``; XLS checks it), or when
   nothing orders one after the other (``runtime_mutually_exclusive``; XLS
   asserts in simulation that at most one fires).
@@ -69,7 +69,10 @@ class ProcLowerer(BodyLowerer):
         super().__init__(pkg, proc, types, names, funcs)
         self.channels = channels             # field index -> channel
         self.effects: List[_Effect] = []     # in program order
-        # State reads and writes, for the state_read predicate (RQ-F5):
+        # A cycle step: one activation is one atomic cycle, so effects
+        # on different channels are not ordered at all.
+        self.step = False
+        # State reads and writes, for the state_read predicate:
         # per state key, the nodes whose value is still the start-of-activation
         # value, and the path predicates of each read and write.
         self.state_dep: Dict[Key, set] = {}
@@ -125,10 +128,12 @@ class ProcLowerer(BodyLowerer):
         exclusive paths are not ordered, so XLS can merge operations on one
         channel into one per activation. An earlier operation on the same
         channel whose guard can also hold is left unordered: both firing is
-        XLS's runtime assertion (RQ-F5)."""
+        XLS's runtime assertion."""
         x = _Effect(s, ch.name if ch is not None else None, list(self.flow.conds))
         direct, same = [], []
         for i, y in enumerate(self.effects):
+            if self.step and (x.ch is None or y.ch != x.ch):
+                continue
             if self.disjoint(x.conds, y.conds):
                 continue
             (same if x.ch is not None and y.ch == x.ch else direct).append(i)
@@ -172,7 +177,7 @@ class ProcLowerer(BodyLowerer):
         x, tok = self._begin(s, None)
         self._end(x, self.b.assert_(tok, ok, msg))
 
-    # -- exclusive guards (RQ-F5) ---------------------------------------
+    # -- exclusive guards ---------------------------------------
     def _same(self, a: xir.Node, b: xir.Node, depth: int = 6) -> bool:
         """Structurally the same value (the same node, or the same op on the
         same operands): an unrolled loop rebuilds ``x == i`` each iteration."""
@@ -388,6 +393,7 @@ def lower_component(comp: ir.DataTypeComponent, pkg: Optional[xir.Package] = Non
     for i in sorted(channels):
         proc.channels.append(channels[i])
     pl2 = ProcLowerer(pkg, proc, types, names, funcs, channels)
+    pl2.step = bool(run.metadata.get("fw_step"))
     pl2._ch_ir_types = ch_types
     elements: Dict[Key, xir.StateElement] = {}
     for key in state_keys:
@@ -418,7 +424,7 @@ def lower_component(comp: ir.DataTypeComponent, pkg: Optional[xir.Package] = Non
         if rd is not None and not _depends_on(rd, reads[key]):
             # Used only on a guard: the read takes it, and the update fires
             # only where the element is written, so an activation that does
-            # not use it never sees its value (RQ-F5).
+            # not use it never sees its value.
             reads[key].attrs["predicate"] = rd
             if pl2.writes[key]:
                 pl2.b.next_value(st, v, predicate=_guard(pl2, pl2.writes[key]))

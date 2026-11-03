@@ -270,7 +270,7 @@ class _Activation:
 
     def _fire(self, ch) -> None:
         """runtime_mutually_exclusive: XLS's RTL asserts that at most one op
-        on the channel fires per activation (RQ-F5); so does this."""
+        on the channel fires per activation; so does this."""
         if ch.strictness == "runtime_mutually_exclusive":
             if ch.name in self.fired:
                 raise XlsAssertionError(
