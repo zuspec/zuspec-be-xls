@@ -14,6 +14,13 @@ with the group's external channels as its ports.
 * *external*: ``[{"name", "inst", "port", "flop_kind"}]``, a member port that
   becomes a port of the group (its direction is the member's).
 
+An internal channel of depth 1 or more has registered push outputs: its
+ready comes from the FIFO's own state, never from the reader's ready in the
+same cycle (no push while full, even with a pop). That is an fw-hdl
+channel's rule, and with it a FIFO XLS materializes
+(``--materialize_internal_fifos``) has the same timing as the module
+fw-hdl supplies (``--fifo_module``), which registers its outputs anyway.
+
 XLS takes one schedule for the package (``#[initiation_interval]`` on a
 non-top proc has no effect), so the group shares one set of codegen options.
 """
@@ -86,7 +93,8 @@ def lower_group(name: str, members: Sequence[Tuple[str, ir.DataTypeComponent, st
                   f"ops=send_receive, flow_control=ready_valid, "
                   f"strictness=proven_mutually_exclusive, fifo_depth={depth}, "
                   f"bypass={'true' if depth == 0 else 'false'}, "
-                  f"register_push_outputs=false, register_pop_outputs=false)",
+                  f"register_push_outputs={'true' if depth > 0 else 'false'}, "
+                  f"register_pop_outputs=false)",
                   _ci(c["name"], "send"), _ci(c["name"], "receive")]
     for inst, comp, proc_name in members:
         p = inst_proc[inst]
