@@ -436,3 +436,26 @@ def lower_component(comp: ir.DataTypeComponent, pkg: Optional[xir.Package] = Non
     pkg.procs.append(proc)
     pkg.top = proc.name
     return pkg
+
+
+def codegen_flags(comp: ir.DataTypeComponent, pkg: xir.Package) -> List[str]:
+    """Codegen flags that *comp*'s proc in *pkg* needs to keep its meaning.
+
+    A cycle step is one cycle: an activation takes the requests offered in
+    that cycle. In a pipeline, XLS may schedule the receives in different
+    stages, so one activation would take requests offered cycles apart, and
+    a request could miss the effect of one whose response has already gone.
+    So a step's streaming receives are kept in one stage."""
+    run = _find_run(comp)
+    if not run.metadata.get("fw_step"):
+        return []
+    proc = next((p for p in pkg.procs if p.name == pkg.top), None) or \
+        (pkg.procs[0] if pkg.procs else None)
+    if proc is None:
+        return []
+    recvs = [c.name for c in proc.channels
+             if c.direction == "receive" and c.kind == "streaming"]
+    if len(recvs) < 2:
+        return []
+    return ["--io_constraints=" + ",".join(f"{recvs[0]}:recv:{c}:recv:0:0"
+                                           for c in recvs[1:])]
