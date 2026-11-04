@@ -17,6 +17,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import zuspec.ir.core as ir
 
+from .xir import IR_KEYWORDS, ir_ident
+
 
 @dc.dataclass
 class CodegenOptions:
@@ -53,15 +55,18 @@ def predict_signature(comp: ir.DataTypeComponent,
             continue
         direction = "in" if isinstance(f.datatype, ir.DataTypeGetIF) else "out"
         flow = f.pragmas.get("fw_flow", "ready_valid")
+        # The channel keeps the class's name; its pins carry the IR's (a
+        # keyword gets a trailing `_`).
+        pin = ir_ident(f.name)
         if flow == "level":
             # A single_value channel: a data pin only.
-            fc, ports = "none", {"data": f.name + opts.data_suffix}
+            fc, ports = "none", {"data": pin + opts.data_suffix}
         else:
             # "valid": XLS still has a ready pin (flow_control=none emits one,
             # and there is no valid-only mode); integration ties it high.
             fc = "valid" if flow == "valid" else "ready_valid"
-            ports = {"data": f.name + opts.data_suffix, "valid": f.name + opts.valid_suffix,
-                     "ready": f.name + opts.ready_suffix}
+            ports = {"data": pin + opts.data_suffix, "valid": pin + opts.valid_suffix,
+                     "ready": pin + opts.ready_suffix}
         sig.channels.append(ir.ChannelSignature(
             name=f.name, direction=direction, payload=f.datatype.element_type,
             flow_control=fc, ports=ports, payload_sv_type=f.pragmas.get("sv_type")))
@@ -149,6 +154,11 @@ _FLOP = {"FLOP_KIND_NONE": "none", "FLOP_KIND_FLOP": "flop", "FLOP_KIND_SKID": "
          "FLOP_KIND_ZERO_LATENCY": "zero_latency"}
 
 
+def _class_name(name: str) -> str:
+    """The class's name for an IR channel: undo the keyword escape."""
+    return name[:-1] if name.endswith("_") and name[:-1] in IR_KEYWORDS else name
+
+
 def signature_from_codegen(text: str) -> ir.BlockSignature:
     """Read the ``ModuleSignatureProto`` text that ``codegen_main`` writes.
 
@@ -174,7 +184,7 @@ def signature_from_codegen(text: str) -> ir.BlockSignature:
                      for role in ("data", "valid", "ready")}
             flow = _FLOW.get(_one(stream, "flow_control"), "none")
         out.channels.append(ir.ChannelSignature(
-            name=_one(ch, "channel_name"),
+            name=_class_name(_one(ch, "channel_name")),
             direction="in" if _one(ch, "direction") == "CHANNEL_DIRECTION_RECEIVE" else "out",
             payload=ir.DataTypeInt(bits=_type_bits(_one(ch, "type", {})), signed=False),
             flow_control=flow,

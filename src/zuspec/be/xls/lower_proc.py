@@ -453,7 +453,7 @@ def codegen_flags(comp: ir.DataTypeComponent, pkg: xir.Package) -> List[str]:
         (pkg.procs[0] if pkg.procs else None)
     if proc is None:
         return []
-    recvs = [c.name for c in proc.channels
+    recvs = [xir.ir_ident(c.name) for c in proc.channels
              if c.direction == "receive" and c.kind == "streaming"]
     if len(recvs) < 2:
         return []

@@ -105,3 +105,19 @@ def test_actual_signature_takes_sv_types_from_the_prediction():
     assert sig.sources == ["acc.sv"] and sig.latency == 1
     with pytest.raises(SignatureMismatch, match="in_ch payload"):
         actual_signature(pred, signature_from_codegen(SIG_TEXT.replace("bit_count: 8", "bit_count: 7")))
+
+
+def test_keyword_channel_keeps_its_name():
+    """A port named after an IR keyword (`ret`) is the channel `ret_` in the
+    IR and the pins `ret_`, `ret__vld`, `ret__rdy`; the signature keeps the
+    class's name, so the prediction and codegen's agree."""
+    comp = component("k", [in_port("ret", u(4)), out_port("out_ch", u(4))], [forever()])
+    pred = predict_signature(comp)
+    assert pred.channel("ret").ports == {"data": "ret_", "valid": "ret__vld",
+                                         "ready": "ret__rdy"}
+    text = SIG_TEXT.replace('"in_ch"', '"ret_"').replace('"in_ch_rdy"', '"ret__rdy"') \
+        .replace('"in_ch_vld"', '"ret__vld"').replace("bit_count: 8", "bit_count: 4") \
+        .replace('module_name: "acc"', 'module_name: "k"') \
+        .replace("bit_count: 12", "bit_count: 0")
+    sig = signature_from_codegen(text)
+    assert sig.channels[0].name == "ret"
