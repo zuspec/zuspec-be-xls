@@ -445,7 +445,15 @@ def codegen_flags(comp: ir.DataTypeComponent, pkg: xir.Package) -> List[str]:
     that cycle. In a pipeline, XLS may schedule the receives in different
     stages, so one activation would take requests offered cycles apart, and
     a request could miss the effect of one whose response has already gone.
-    So a step's streaming receives are kept in one stage."""
+    So a step's streaming receives are kept in one stage.
+
+    A memory member (pragma ``fw_mem``: a ``req`` port and an ``rd`` level)
+    is a RAM with a 1-cycle read outside the block: a step reads, in ``rd``,
+    the data of the previous step's request. That holds only if the request
+    goes in the stage that ``rd`` is sampled in, so the two are kept in one
+    stage too; and ``rd`` must reach the logic without a register, so the
+    block's single-value channels are not flopped
+    (``--flop_single_value_channels=false``)."""
     run = _find_run(comp)
     if not run.metadata.get("fw_step"):
         return []
@@ -455,7 +463,16 @@ def codegen_flags(comp: ir.DataTypeComponent, pkg: xir.Package) -> List[str]:
         return []
     recvs = [xir.ir_ident(c.name) for c in proc.channels
              if c.direction == "receive" and c.kind == "streaming"]
-    if len(recvs) < 2:
-        return []
-    return ["--io_constraints=" + ",".join(f"{recvs[0]}:recv:{c}:recv:0:0"
-                                           for c in recvs[1:])]
+    cons = [f"{recvs[0]}:recv:{c}:recv:0:0" for c in recvs[1:]]
+    mems: dict = {}
+    for f in comp.fields:
+        m = f.pragmas.get("fw_mem") if f.pragmas else None
+        if m:
+            mems.setdefault(m["member"], {})[m["role"]] = xir.ir_ident(f.name)
+    for m in mems.values():
+        if "req" in m and "rd" in m:
+            cons.append(f"{m['rd']}:recv:{m['req']}:send:0:0")
+    flags = ["--io_constraints=" + ",".join(cons)] if cons else []
+    if mems:
+        flags.append("--flop_single_value_channels=false")
+    return flags
